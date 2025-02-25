@@ -1,0 +1,8 @@
+Now based on all the above information (transcript, timeline and intensity) assign summary scores for the whole class, for the five principles and the top five targets. These values do not need to be mathematically calculated; they are subjective. 
+The final values should be weighted to show the differences in the scores much more prominently than the raw values but retaining the overall spirit of the rankings.
+
+Return the results in two JSON objects of mapping the string names to float values with the format 
+{
+    "principles_summary": {...}
+    "targets_summary": {...}
+}

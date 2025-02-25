@@ -1,0 +1,70 @@
+Extract a JSON timeline from the provided yoga class transcript. Follow the instructions carefully.
+
+OUTPUT FORMAT EXAMPLE:
+
+[
+    {
+        "start": "00:00:26"
+        "end": "00:01:21",
+        "pose": "thunderbolt",
+        "targets": {"ankles": 0.97, "feet": 0.69},
+        "principles": {"strength": 0.04, "stretch": 0.77, "stability": 0.10, "meditation": 0.82, "breathwork": 0.61},
+    }, 
+    {
+        "start": "00:01:24",
+        "end": "00:01:32",
+        "pose": "tabletop",
+        "targets": {"wrists": 0.16},
+        "principles": {"strength": 0.08, "stretch": 0.18, "stability": 0.15, "meditation": 0.06, "breathwork": 0.06},
+    },
+    {
+        "start": "00:01:32",
+        "end": "00:01:57",
+        "pose": "warmup",
+        "targets": {"wrists": 0.99, "forearms": 0.95},
+        "principles": {"strength": 0.11, "stretch": 0.90, "stability": 0.16, "meditation": 0.13, "breathwork": 0.22},
+    },
+    ...
+    {
+        "start": "00:03:42",
+        "end": "00:03:58",
+        "pose": "warrior3left",
+        "targets": {"legs": 0.80, "core": 0.91, "back": 0.85, "hips": 0.80},
+        "principles": {"strength": 0.78, "stretch": 0.42, "stability": 0.97, "meditation": 0.03, "breathwork": 0.22},
+    },
+    ...
+    {
+        "pose": "lotus",
+        "start": "00:10:10",
+        "end": "00:15:05",
+        "targets": {"hips": 0.89, "knees": 0.85, "ankles": 0.81},
+        "principles": {"strength": 0.03, "stretch": 0.67, "stability": 0.10, "meditation": 0.99, "breathwork": 0.99}
+    }
+]
+
+Floats must be between 0 and 1.
+You are not required to reuse the same values for these example poses; they are a rough guideline.
+
+The above JSON response was extracted using the following highly paraphrased pose descriptions and additional session instructions from another transcript:
+
+PARAPRASED TRANSCRIPT: EXTRACTED POSE INFORMATION
+
+"Grounding self, setting goals for session": thunderbolt
+"Let's come into tabletop to prep for our warmup": tabletop
+"Always want to warmup wrists, send the hips back with hands pointing towards you, feel stretch in forearms": warmup
+...
+"Go into warrior three on left leg and hold": warrior3
+...
+"Now we're going to stay in lotus, box breathing, in for six, hold six, out six, hold six" (and then repeats for a few minutes) : lotus
+
+You can exclude transition time if necessary but only up to a few seconds (example above has 3s transition from thunderbolt to tabletop). If unsure, assume the previous pose was held until the moment the next one begins.  
+
+TARGETS FIELD:
+
+The targets field can include any body part based on your own knowledge of yoga poses and what the transcript describes. The corresponding numbers must be a decimal and describe the extent to which certain body parts are targeted by the pose. Only include targets if they are especially targeted by the pose; e.g. the back is used in many poses, so it's not worth including in every target field.
+
+PRINCIPLES FIELD:
+
+All five principles must be included in each pose: stretch, stability, strength, meditation, breathwork. The values indicate the significance of the principle in the session's use of the pose in absolute terms. This means the value is high if it's an high intensity of pose for a short duration (e.g. side plank) or a low intensity for a long duration (e.g. corpse pose for 10 minutes is extremely high meditation, and what would be a low stretch value for a short period becomes a high stretch for a long period). The breathwork principle should be low if only given a simple reminder to breathe but can be high if there is significant mention of breathing.
+
+RETURN ONLY JSON

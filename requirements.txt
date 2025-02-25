@@ -1,0 +1,6 @@
+yt-dlp~=2025.2.19
+stravalib~=2.2
+openai~=1.64.0
+Flask~=3.1.0
+gunicorn~=23.0.0
+webvtt-py~=0.5.1

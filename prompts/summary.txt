@@ -1,0 +1,11 @@
+Finally, create a title for a Strava activity, with a reference to the current time of {0} (without writing the exact time). It should be a lowercase informal sentence and slightly funny. 
+
+Examples: 
+"chill midweek midnight vibes 😌🌙"
+"up at 8am on sunday against all odds 🌅"
+"hard session but made it through 😮‍💨"
+
+Return using the JSON format
+{{
+    "title": "..."
+}}

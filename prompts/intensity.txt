@@ -1,0 +1,13 @@
+Now assign an average intensity score for each minute of the practice.
+Intensity refers to the fitness challenge of the combination of poses over the course of each minute.
+
+Meditation is none: holding a shavasana for the entire minute should have zero intensity.
+Breathwork shouldn't add intensity unless it's a significant part of the minute, like repeated box breathing (which would still only be low on its own).
+Balance and stretching add similar amounts of intensity as each other; a deep stretch or very challenging hold should be high.
+Strength has the biggest effect on intensity, especially if a challenging pose is held for a long time or there are rapid changes between hard poses (e.g. a full minute of multiple cycles of plank -> chaturanga -> downward dog -> chair -> plank would be maximum intensity). 
+
+Remember that the poses are stored with the start and end times which you can use directly without converting into seconds.
+
+Do not just use the principle scores assigned by the previous step — also consider the language used by the instructor during the minute.
+
+Return a list of floats (0 to 1) of intensity scores in the format [0.23, 0.64...], with position 0 representing 00:00:00 --> 00:00:59 etc.
