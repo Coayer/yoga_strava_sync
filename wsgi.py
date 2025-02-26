@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from stravalib import Client
 from openai import OpenAI
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, Response
 
 MAX_BAR_WIDTH = 16
 PROMPT_FILES = {
@@ -153,44 +153,47 @@ def run_ai_analysis(subtitle_file):
         api_key=app.config["OPENAI_API_KEY"],
     )
 
-    # Upload subtitle file
-    client.files.create(
-        file=Path(subtitle_file),
-        purpose="assistants",
-    )
-    logging.info("Subtitles uploaded")
-
     # Initialize message history and results
     messages = []
     results = {}
 
-    # Timeline prompt
-    prompt_content = Path(PROMPT_FILES["timeline"]).read_text()
-    timeline_response, messages = send_llm_prompt(client, messages, prompt_content)
-    logging.info("Timeline analysis complete")
+    try:
+        # Upload subtitle file
+        client.files.create(
+            file=Path(subtitle_file),
+            purpose="assistants",
+        )
+        logging.info("Subtitles uploaded")
 
-    # Intensity prompt
-    prompt_content = Path(PROMPT_FILES["intensity"]).read_text()
-    intensity_response, messages = send_llm_prompt(client, messages, prompt_content)
-    intensity_data = json.loads(intensity_response)
-    results["intensity"] = intensity_data
-    logging.info("Intensity analysis complete")
+        # Timeline prompt
+        prompt_content = Path(PROMPT_FILES["timeline"]).read_text()
+        timeline_response, messages = send_llm_prompt(client, messages, prompt_content)
+        logging.info("Timeline analysis complete")
 
-    # Scores prompt
-    prompt_content = Path(PROMPT_FILES["scores"]).read_text()
-    scores_response, messages = send_llm_prompt(client, messages, prompt_content)
-    scores_data = json.loads(scores_response)
-    results["scores"] = scores_data
-    logging.info("Scores analysis complete")
+        # Intensity prompt
+        prompt_content = Path(PROMPT_FILES["intensity"]).read_text()
+        intensity_response, messages = send_llm_prompt(client, messages, prompt_content)
+        intensity_data = json.loads(intensity_response)
+        results["intensity"] = intensity_data
+        logging.info("Intensity analysis complete")
 
-    # Summary prompt with formatted datetime
-    summary_prompt = (
-        Path(PROMPT_FILES["summary"]).read_text().format(format_datetime_readable())
-    )
-    title_response, messages = send_llm_prompt(client, messages, summary_prompt)
-    title_data = json.loads(title_response)
-    results["title"] = "[ai] " + title_data["title"]
-    logging.info(f"Generated title: {results['title']}")
+        # Scores prompt
+        prompt_content = Path(PROMPT_FILES["scores"]).read_text()
+        scores_response, messages = send_llm_prompt(client, messages, prompt_content)
+        scores_data = json.loads(scores_response)
+        results["scores"] = scores_data
+        logging.info("Scores analysis complete")
+
+        # Summary prompt with formatted datetime
+        summary_prompt = (
+            Path(PROMPT_FILES["summary"]).read_text().format(format_datetime_readable())
+        )
+        title_response, messages = send_llm_prompt(client, messages, summary_prompt)
+        title_data = json.loads(title_response)
+        results["title"] = "[ai] " + title_data["title"]
+        logging.info(f"Generated title: {results['title']}")
+    except Exception as e:
+        logging.error(f"Error running AI analyis: {e}")
 
     return results
 
@@ -207,24 +210,27 @@ posted using a lil script
     logging.info("Generated Strava description")
 
     strava_client = Client()
-    token_response = strava_client.refresh_access_token(
-        client_id=app.config["STRAVA_CLIENT_ID"],
-        client_secret=app.config["STRAVA_CLIENT_SECRET"],
-        refresh_token=app.config["STRAVA_REFRESH_TOKEN"],
-    )
-    strava_client.access_token = token_response["access_token"]
+    try:
+        token_response = strava_client.refresh_access_token(
+            client_id=app.config["STRAVA_CLIENT_ID"],
+            client_secret=app.config["STRAVA_CLIENT_SECRET"],
+            refresh_token=app.config["STRAVA_REFRESH_TOKEN"],
+        )
+        strava_client.access_token = token_response["access_token"]
 
-    activity_start_time = datetime.now() - timedelta(seconds=duration + 60)
-    strava_client.create_activity(
-        title,
-        activity_start_time,
-        duration,
-        "Yoga",
-        description=description,
-    )
-    logging.info(f"Activity posted to Strava: {title}")
-
-    return {"title": title, "duration": duration, "description": description}
+        activity_start_time = datetime.now() - timedelta(seconds=duration + 60)
+        strava_client.create_activity(
+            title,
+            activity_start_time,
+            duration,
+            "Yoga",
+            description=description,
+        )
+        logging.info(f"Activity posted to Strava: {title}")
+        return True
+    except Exception as e:
+        logging.error(f"Error uploading to Strava: {str(e)}")
+        return False
 
 
 def process_youtube_url(video_url):
@@ -236,20 +242,24 @@ def process_youtube_url(video_url):
         logging.info(f"Fetched subtitles: {subtitle_file}, duration: {duration}s")
 
         results = run_ai_analysis(subtitle_file)
+        if results == {}:
+            return False
 
-        strava_result = post_to_strava(
+        strava_posted = post_to_strava(
             video_url,
             results["title"],
             duration,
             results["scores"],
             results["intensity"],
         )
+        if not strava_posted:
+            return False
 
         logging.info("Process completed successfully")
-        return {"success": True, "strava_activity": strava_result}
+        return True
     except Exception as e:
-        logging.error(f"Error processing video: {str(e)}", exc_info=True)
-        return {"success": False, "error": str(e)}
+        logging.error(f"Error processing video: {str(e)}")
+        return False
 
 
 # Load configuration at import time for Gunicorn
@@ -267,6 +277,7 @@ app.config.update(
 def submit_video():
     """Flask endpoint to submit a YouTube video for processing."""
     logging.info(f"/submit request: {request.user_agent}")
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or auth_header.split(" ")[-1] != app.config["YOGAVA_API_KEY"]:
         logging.info("Invalid yogava API key")
@@ -278,9 +289,9 @@ def submit_video():
 
     video_url = request.json["video_url"]
 
-    result = process_youtube_url(video_url)
+    success = process_youtube_url(video_url)
 
-    if result["success"]:
+    if success:
         return Response(response="OK", status=200)
     else:
         return Response(response="Internal server failure", status=500)
