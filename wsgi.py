@@ -165,31 +165,84 @@ def run_ai_analysis(subtitle_file):
         )
         logging.info("Subtitles uploaded")
 
-        # Timeline prompt
-        prompt_content = Path(PROMPT_FILES["timeline"]).read_text()
-        timeline_response, messages = send_llm_prompt(client, messages, prompt_content)
-        logging.info("Timeline analysis complete")
-
         # Intensity prompt
         prompt_content = Path(PROMPT_FILES["intensity"]).read_text()
         intensity_response, messages = send_llm_prompt(client, messages, prompt_content)
-        intensity_data = json.loads(intensity_response)
-        results["intensity"] = intensity_data
-        logging.info("Intensity analysis complete")
+
+        # Add retry logic for intensity_data
+        retries = 0
+        max_retries = 3
+        while retries < max_retries:
+            try:
+                intensity_data = json.loads(intensity_response)
+                results["intensity"] = intensity_data
+                logging.info("Intensity analysis complete")
+                break
+            except json.JSONDecodeError:
+                retries += 1
+                if retries >= max_retries:
+                    logging.error(
+                        f"Failed to parse intensity response after {max_retries} attempts"
+                    )
+                    raise
+                logging.warning(
+                    f"Failed to parse intensity response, retrying ({retries}/{max_retries})"
+                )
+                intensity_response, messages = send_llm_prompt(
+                    client, messages, prompt_content
+                )
 
         # Scores prompt
         prompt_content = Path(PROMPT_FILES["scores"]).read_text()
         scores_response, messages = send_llm_prompt(client, messages, prompt_content)
-        scores_data = json.loads(scores_response)
-        results["scores"] = scores_data
-        logging.info("Scores analysis complete")
+
+        # Add retry logic for scores_data
+        retries = 0
+        while retries < max_retries:
+            try:
+                scores_data = json.loads(scores_response)
+                results["scores"] = scores_data
+                logging.info("Scores analysis complete")
+                break
+            except json.JSONDecodeError:
+                retries += 1
+                if retries >= max_retries:
+                    logging.error(
+                        f"Failed to parse scores response after {max_retries} attempts"
+                    )
+                    raise
+                logging.warning(
+                    f"Failed to parse scores response, retrying ({retries}/{max_retries})"
+                )
+                scores_response, messages = send_llm_prompt(
+                    client, messages, prompt_content
+                )
 
         # Summary prompt with formatted datetime
         summary_prompt = (
             Path(PROMPT_FILES["summary"]).read_text().format(format_datetime_readable())
         )
         title_response, messages = send_llm_prompt(client, messages, summary_prompt)
-        title_data = json.loads(title_response)
+
+        # Add retry logic for title_data
+        retries = 0
+        while retries < max_retries:
+            try:
+                title_data = json.loads(title_response)
+                break
+            except json.JSONDecodeError:
+                retries += 1
+                if retries >= max_retries:
+                    logging.error(
+                        f"Failed to parse title response after {max_retries} attempts"
+                    )
+                    raise
+                logging.warning(
+                    f"Failed to parse title response, retrying ({retries}/{max_retries})"
+                )
+                title_response, messages = send_llm_prompt(
+                    client, messages, summary_prompt
+                )
         results["title"] = "[ai] " + title_data["title"]
         logging.info(f"Generated title: {results['title']}")
     except Exception as e:
